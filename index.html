@@ -59,17 +59,35 @@
                   
                     return false;
                   });
+
+
                   socket.on('chat message', function(msg){
                     if(msg === "File doesnot exist.Please first upload csv file"){
                       $('#messages').append($('<li class="list-group-item">').html('<a href="/upload">upload csv file</a>'));
                       console.log(msg);
+                    }else if(msg === "Please enter a product for scrap!"){
+                      var product = prompt("Please enter your name", "Harry Potter");
+                      socket.emit('product', product);
+                    }else{
+                      $('#messages').append($('<li class="list-group-item">').text(msg));
                     }
-                    $('#messages').append($('<li class="list-group-item">').text(msg));
+                    
                   });
+
+
                   socket.on('chat message1', function(encodedUri){
                     const link1 = document.createElement("a");
                     link1.setAttribute("href", encodedUri);
                     link1.setAttribute("download", "data.csv");
+                    link1.innerText = "download file";
+                    //document.body.appendChild(link1);
+                    $('#messages').append($('<li class="list-group-item">').html(link1));
+                  });
+
+                  socket.on('forPdf', function(path){
+                    const link1 = document.createElement("a");
+                    link1.setAttribute("href", path);
+                    link1.setAttribute("download", "data.pdf");
                     link1.innerText = "download file";
                     //document.body.appendChild(link1);
                     $('#messages').append($('<li class="list-group-item">').html(link1));

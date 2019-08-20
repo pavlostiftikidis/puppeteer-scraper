@@ -1,12 +1,19 @@
 {
-    "name": "socket-chat-example",
-    "version": "0.0.1",
-    "description": "my first socket.io app",
-    "dependencies": {
-        "express": "^4.17.1",
-        "express-fileupload": "^1.1.5",
-        "hbs": "^4.0.4",
-        "puppeteer": "^1.19.0",
-        "socket.io": "^2.2.0"
-    }
+  "name": "socket-chat-example",
+  "version": "0.0.1",
+  "description": "my first socket.io app",
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-fileupload": "^1.1.5",
+    "hbs": "^4.0.4",
+    "nodemon": "^1.19.1",
+    "puppeteer": "^1.19.0",
+    "socket.io": "^2.2.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "main": "server.js",
+  "author": "",
+  "license": "ISC"
 }

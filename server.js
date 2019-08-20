@@ -16,14 +16,15 @@ var upload = require('express-fileupload');
 app.use(upload());
 app.set('views',path.join(__dirname,'views'));
 app.set('view engine','hbs');
+app.use(express.static('public')); 
 
 app.get('/', function(req, res){
     res.sendFile(__dirname + '/index.html');
   });
 
-  app.get('/public/:name', function(req, res){
-    res.render('image', { path: "localhost:3000/public/"+req.params.name});
-  });
+  // app.get('/image:name', function(req, res){
+  //   res.render('image', { path: req.params.name});
+  // });
 
 
 
@@ -57,10 +58,15 @@ app.get('/', function(req, res){
   io.on('connection', function(socket){
     socket.on('chat message', function(msg){
         if(msg == 1){
-            scrapping(msg);
+          io.emit('chat message', "Please enter a product for scrap!");
+          socket.on('product', function(product){
+            console.log(product);
+            scraping(msg,product);
+          });
+            
 
             console.log("pdf");
-            io.emit('chat message', "pdf");
+            io.emit('chat message', "Select pdf.");
         }else if(msg == 2){
           io.emit('chat message', "Select csv");
 
@@ -72,14 +78,13 @@ app.get('/', function(req, res){
               console.error(err)
               return
             }
-            scrapping(msg);
+            scraping(msg);
             //file exists
           })
           console.log("CSV");
             
         }else if(msg == 3){
-          scrapping(msg);
-          console.log("close");
+          process.exit(1);
         }
     });
   });
@@ -90,7 +95,7 @@ http.listen(3000, function(){
 });
 
 
-function scrapping(method){
+function scraping(method, product = null){
   if(method != 3){
   function readURLFile(path) {
     return fs.readFileSync(path, 'utf-8')
@@ -129,6 +134,8 @@ async function createPDF(data){
     data: data
   };
 
+  console.log(data);
+
   console.log(context);
   var templateHtml = fs.readFileSync(path.join(process.cwd(), 'template1.html'), 'utf8');
   var template = handlebars.compile(templateHtml);
@@ -140,7 +147,11 @@ async function createPDF(data){
   var milis = new Date();
   milis = milis.getTime();
 
-  var pdfPath = path.join('pdf', `${data.name}-${milis}.pdf`);
+  var pdfPath = path.join('public', `${data.name}-${milis}.pdf`);
+  
+  var fileName = pdfPath.split("\\");
+  console.log(fileName);
+  io.emit('forPdf', fileName[1]);
 
   var options = {
     width: '1230px',
@@ -167,7 +178,6 @@ async function createPDF(data){
     waitUntil: 'networkidle0'
   });
 
-
   await page.pdf(options);
   await browser.close();
   }
@@ -175,15 +185,13 @@ async function createPDF(data){
     (async () => {
         const startDate = new Date().getTime();
         const USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3239.108 Safari/537.36';
-        const urls = readURLFile('./uploads/skroutz.csv');
+        // const urls = readURLFile('./uploads/skroutz.csv');
         const browser = await puppeteer.launch({
           devtools: false,
           headless: true
           //slowMo: 300
       });
-        $i=0;
-        product = [];
-        console.log(urls);
+        
 
         const page2 = await browser.newPage();
         // const result = await page2.evaluate(x => {
@@ -194,6 +202,11 @@ async function createPDF(data){
         // }, 7);
     
         if(method == 2){
+          
+          const urls = readURLFile('./uploads/skroutz.csv');
+          $i=0;
+        product = [];
+        console.log(urls);
             for (let url of urls) {
                 if(url ===  undefined )
                 {
@@ -300,15 +313,16 @@ async function createPDF(data){
               await page.setViewport({ width: 1366, height: 768});
               await page.goto('https://www.skroutz.gr/');
     
-              const result = await page.evaluate(x => {
-                var txt;
-                var product = prompt("Please enter a product:", "Galaxy A50");
-                console.log("Start scraping for"+ product);
-              return Promise.resolve(product);
-            }, 7);
-            //console.log(result); // prints "56"
+            //   const result = await page.evaluate(x => {
+            //     var txt;
+            //     var product = prompt("Please enter a product:", "Galaxy A50");
+            //     console.log("Start scraping for"+ product);
+            //   return Promise.resolve(product);
+            // }, 7);
+
+            io.emit('chat message', "Start generate pdf");
     
-              await page.type('#search-bar-input', result);
+              await page.type('#search-bar-input', product);
               const buttonSelector = 'button';
               await page.waitForSelector(buttonSelector);
               await page.click(buttonSelector);
@@ -344,7 +358,7 @@ async function createPDF(data){
                 link = links[i].split('-');
                 price[i] = parseFloat(link[0]); 
                 url[i] = link[1];
-              data.push({num : i, price1 : price[i], url1 : url[i], name: result });
+              data.push({num : i, price1 : price[i], url1 : url[i], name: product });
             }
             //console.log(data);
     
@@ -359,7 +373,7 @@ async function createPDF(data){
             await page1.setViewport({ width: 1366, height: 768});
             await page1.goto(data[0].url1, {"waitUntil" : "networkidle2"});
             await page1.waitFor(3000);
-            await page1.screenshot({path: "/screenshot/"+data[0].name+"1"+'.png', fullPage: true});
+            await page1.screenshot({path: "public/"+data[0].name+"1"+'.png', fullPage: true});
             const url1 = page1.url();
             await page1.close();
     
@@ -367,16 +381,16 @@ async function createPDF(data){
             await page2.setViewport({ width: 1366, height: 768});
             await page2.goto(data[1].url1, {"waitUntil" : "networkidle2"});
             await page2.waitFor(3000);
-            await page2.screenshot({path: "/screenshot/"+data[1].name+"2"+'.png', fullPage: true});
+            await page2.screenshot({path: "public/"+data[1].name+"2"+'.png', fullPage: true});
             const url2 = page2.url();
             await page2.close();
     
             var screenshot = [];
     
-            screenshot.push({num : 1, path : "http://localhost:3000/screenshot/"+data[0].name+"1"+'.png', url :data[0].url1});
+            screenshot.push({num : 1, path : "http://localhost:3000/"+data[0].name+"1"+'.png', url :data[0].url1});
     
     
-            screenshot.push({num : 2, path : "http://localhost:3000/screenshot/"+data[1].name+"2"+'.png', url : data[1].url1});
+            screenshot.push({num : 2, path : "http://localhost:3000/"+data[1].name+"2"+'.png', url : data[1].url1});
     
     
             console.log(screenshot);
@@ -385,9 +399,8 @@ async function createPDF(data){
             await createPDF(screenshot);
     
             //delete file
-            fs.unlinkSync("C:\\xampp\\htdocs\\screenshot\\"+data[0].name+"1"+'.png')
-            fs.unlinkSync("C:\\xampp\\htdocs\\screenshot\\"+data[1].name+"2"+'.png')
-            //await createPDF(data);
+            fs.unlinkSync("public/"+data[0].name+"1"+'.png');
+            fs.unlinkSync("public/"+data[1].name+"2"+'.png');
     
               browser.close();
         }
